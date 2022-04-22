@@ -298,6 +298,7 @@ class MadaraGenerator : ThemeSourceGenerator {
         SingleLang("ManhuaToon", "https://manhuatoon.com", "en"),
         SingleLang("ManhuaUS", "https://manhuaus.com", "en", overrideVersionCode = 5),
         SingleLang("ManhuaZone", "https://manhuazone.com", "en"),
+        SingleLang("ManhuaZonghe", "https://manhuazonghe.com", "en"),
         SingleLang("Manhuaga", "https://manhuaga.com", "en", overrideVersionCode = 2),
         SingleLang("Manhualo", "https://manhualo.com", "en", overrideVersionCode = 1),
         SingleLang("Manhuas.net", "https://manhuas.net", "en", className = "Manhuasnet", overrideVersionCode = 2),
