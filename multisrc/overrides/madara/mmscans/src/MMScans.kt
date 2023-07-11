@@ -49,7 +49,7 @@ class MMScans : Madara("MMScans", "https://mm-scans.org", "en") {
         return MangasPage(mangas, !hasNextPage)
     }
 
-    fun madara_load_more(page: Int, meta_key: String): Request {
+    fun oldLoadMoreRequest(page: Int, metaKey: String): Request {
         val form = FormBody.Builder()
             .add("action", "madara_load_more")
             .add("page", page.toString())
