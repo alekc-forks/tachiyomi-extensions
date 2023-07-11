@@ -1,8 +1,14 @@
 package eu.kanade.tachiyomi.extension.en.mmscans
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
+import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.util.asJsoup
+import okhttp3.FormBody
+import okhttp3.Request
+import okhttp3.Response
 import org.jsoup.nodes.Element
 
 class MMScans : Madara("MMScans", "https://mm-scans.org", "en") {
@@ -12,8 +18,76 @@ class MMScans : Madara("MMScans", "https://mm-scans.org", "en") {
 
     override val popularMangaUrlSelector = "div.item-summary a"
     override fun chapterListSelector() = "li.chapter-li"
-    override fun searchMangaSelector() = "a"
+    override fun searchMangaSelector() = ".search-wrap >.tab-content-wrap > a"
+    override fun searchMangaNextPageSelector(): String? = "div.no-posts"
 
+    override fun popularMangaParse(response: Response): MangasPage {
+        runCatching { fetchGenres() }
+        val document = response.asJsoup()
+
+        val mangas = document.select(popularMangaSelector()).map { element ->
+            popularMangaFromElement(element)
+        }
+
+        val hasNextPage = popularMangaNextPageSelector()?.let { selector ->
+            document.select(selector).first()
+        } != null
+
+        return MangasPage(mangas, !hasNextPage)
+    }
+    override fun latestUpdatesParse(response: Response): MangasPage {
+        val document = response.asJsoup()
+
+        val mangas = document.select(latestUpdatesSelector()).map { element ->
+            latestUpdatesFromElement(element)
+        }
+
+        val hasNextPage = latestUpdatesNextPageSelector()?.let { selector ->
+            document.select(selector).first()
+        } != null
+
+        return MangasPage(mangas, !hasNextPage)
+    }
+
+    fun madara_load_more(page: Int, meta_key: String): Request {
+        val form = FormBody.Builder()
+            .add("action", "madara_load_more")
+            .add("page", page.toString())
+            .add("template", "madara-core/content/content-archive")
+            .add("vars[paged]", "1")
+            .add("vars[orderby]", "meta_value_num")
+            .add("vars[template]", "archive")
+            .add("vars[sidebar]", "right")
+            .add("vars[post_type]", "wp-manga")
+            .add("vars[post_status]", "publish")
+            .add("vars[meta_key]", meta_key)
+            .add("vars[meta_query][0][paged]", "1")
+            .add("vars[meta_query][0][orderby]", "meta_value_num")
+            .add("vars[meta_query][0][template]", "archive")
+            .add("vars[meta_query][0][sidebar]", "right")
+            .add("vars[meta_query][0][post_type]", "wp-manga")
+            .add("vars[meta_query][0][post_status]", "publish")
+            .add("vars[meta_query][0][meta_key]", meta_key)
+            .add("vars[meta_query][relation]", "AND")
+            .add("vars[manga_archives_item_layout]", "default")
+            .build()
+
+        val xhrHeaders = headersBuilder()
+            .add("Content-Length", form.contentLength().toString())
+            .add("Content-Type", form.contentType().toString())
+            .add("Referer", "$baseUrl/")
+            .add("X-Requested-With", "XMLHttpRequest")
+            .build()
+
+        return POST("$baseUrl/wp-admin/admin-ajax.php", xhrHeaders, form)
+    }
+
+    override fun popularMangaRequest(page: Int): Request {
+        return madara_load_more(page - 1, "_wp_manga_views")
+    }
+    override fun latestUpdatesRequest(page: Int): Request {
+        return madara_load_more(page - 1, "_latest_update")
+    }
     override fun popularMangaFromElement(element: Element): SManga {
         val manga = SManga.create()
 
